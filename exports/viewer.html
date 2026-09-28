@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voxel Viewer</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; color: #eee; font-family: sans-serif; }
+    canvas { display: block; }
+    #info { position: absolute; top: 10px; left: 10px; font-size: 13px; opacity: 0.7; }
+    #controls { position: absolute; bottom: 10px; left: 10px; font-size: 12px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <div id="info">🧊 Voxel Viewer — kitchen_scene_2.obj</div>
+  <div id="controls">Left drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right drag: pan</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    const scene    = new THREE.Scene();
+    const camera   = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x1a1a2e);
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+    dir.position.set(50, 80, 50);
+    scene.add(dir);
+
+    // Controls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Load OBJ — expects kitchen_scene_2.obj in the same folder as this HTML
+    const loader = new THREE.OBJLoader();
+    loader.load(
+      'kitchen_scene_2.obj',
+      (obj) => {
+        obj.traverse(child => {
+          if (child.isMesh) {
+            child.material = new THREE.MeshPhongMaterial({
+              color: 0xc0c0c0,       // silver
+              shininess: 120,
+              specular: 0xffffff
+            });
+          }
+        });
+
+        // Center the model
+        const box = new THREE.Box3().setFromObject(obj);
+        const center = box.getCenter(new THREE.Vector3());
+        obj.position.sub(center);
+        scene.add(obj);
+
+        // Position camera to fit
+        const size = box.getSize(new THREE.Vector3()).length();
+        camera.position.set(size, size * 0.8, size);
+        controls.update();
+      },
+      (xhr) => console.log(`Loading: ${(xhr.loaded/xhr.total*100).toFixed(0)}%`),
+      (err) => console.error('Load error:', err)
+    );
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    (function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    })();
+  </script>
+</body>
+</html>
